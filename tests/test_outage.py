@@ -46,7 +46,7 @@ def check_outage_status(expected_status: FaultRule):
 
 def stop_dynamodb_outage():
     chaos_client = ChaosClient()
-    chaos_client.set_fault_rules(fault_rules=[])
+    chaos_client.set_fault_rules(fault_rule=[])
     check_outage_status([])
 
 def test_dynamodb_outage(dynamodb_resource):
