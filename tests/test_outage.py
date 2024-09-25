@@ -3,9 +3,11 @@ import time
 import boto3
 import requests
 
+from localstack.generated import FaultRule
+from localstack.sdk.clients import ChaosClient
+
 # Replace with your LocalStack endpoint
 LOCALSTACK_ENDPOINT = "http://localhost.localstack.cloud:4566"
-CHAOS_ENDPOINT = f"{LOCALSTACK_ENDPOINT}/_localstack/chaos/faults"
 
 # Replace with your LocalStack DynamoDB table name
 DYNAMODB_TABLE_NAME = "Products"
@@ -31,19 +33,20 @@ def test_lambda_functions_exist(lambda_client):
     function_names = [func["FunctionName"] for func in functions]
     assert all(func_name in function_names for func_name in LAMBDA_FUNCTIONS)
 
-def initiate_dynamodb_outage():
-    outage_payload = [{"service": "dynamodb", "region": "us-east-1"}]
-    response = requests.post(CHAOS_ENDPOINT, json=outage_payload)
-    assert response.ok
-    return outage_payload
+def initiate_dynamodb_outage() -> FaultRule:
+    outage_rule = FaultRule(region="us-east-1", service="dynamodb")
+    chaos_client = ChaosClient()
+    rules = chaos_client.add_fault_rules(fault_rules=[outage_rule])
+    return rules
 
-def check_outage_status(expected_status):
-    outage_status = requests.get(CHAOS_ENDPOINT).json()
+def check_outage_status(expected_status: FaultRule):
+    chaos_client = ChaosClient()
+    outage_status = chaos_client.get_fault_rules()
     assert outage_status == expected_status
 
 def stop_dynamodb_outage():
-    response = requests.post(CHAOS_ENDPOINT, json=[])
-    assert response.ok
+    chaos_client = ChaosClient()
+    chaos_client.set_fault_rules(fault_rule=[])
     check_outage_status([])
 
 def test_dynamodb_outage(dynamodb_resource):
